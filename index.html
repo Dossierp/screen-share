@@ -2,78 +2,68 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Invitado - Screen Share PRO - DP</title>
+    <title>Invitado - Screen Share PRO</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --green: #00c853; --red: #d50000; --blue: #2979ff; --black: #000; }
-        body { margin: 0; background: var(--black); color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        .branding { text-align: center; margin-bottom: 10px; }
-        .title { font-size: 2.2em; font-weight: bold; }
-        .subtitle { font-size: 1.1em; color: #888; }
-        video { width: 70vw; max-height: 40vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; }
-        .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; text-align: center; width: 360px; margin-top: 10px; }
-        button { padding: 15px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; text-transform: uppercase; font-size: 1em; }
-        .btn-share { background: var(--green); color: white; }
-        .btn-link { background: var(--blue); color: white; }
-        .btn-stop { background: var(--red) !important; }
-        #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,1); width: 320px; }
-        .modal-btns { display: flex; gap: 15px; margin-top: 25px; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #333; text-align: center; width: 350px; }
+        video { width: 60vw; height: 30vh; background: #050505; border: 1px solid #333; margin-bottom: 20px; border-radius: 10px; }
+        button { padding: 15px; margin: 10px 0; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; text-transform: uppercase; }
+        .btn-green { background: #00c853; color: white; }
+        .btn-blue { background: #2979ff; color: white; }
+        #portero { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
-    <div class="branding">
-        <div class="title">SCREEN SHARE PRO - DP</div>
-        <div class="subtitle">CONSOLA DE INVITADO</div>
-    </div>
-    <video id="localVideo" autoplay playsinline muted></video>
+    <h2>SCREEN SHARE PRO - DP</h2>
+    <video id="preview" autoplay playsinline muted></video>
     <div class="panel">
-        <button id="shareBtn" class="btn-share" onclick="startCapture()">1. Compartir pantalla</button>
-        <button id="linkBtn" class="btn-link" onclick="copyLink()">2. Copiar Link para vMix</button>
+        <button class="btn-green" onclick="prepararPantalla()">1. Preparar Pantalla</button>
+        <button class="btn-blue" onclick="copiarLink()">2. Copiar Link vMix</button>
+        <div id="status" style="margin-top:10px; color: #888;">Estado: Esperando...</div>
     </div>
-    <div id="modal-portero">
-        <h3>SOLICITUD ENTRANTE</h3>
-        <p>¿Enviar señal a vMix?</p>
-        <div class="modal-btns">
-            <button style="background:var(--green)" onclick="answer(true)">YES</button>
-            <button style="background:var(--red)" onclick="answer(false)">NO</button>
+
+    <div id="portero">
+        <h1>¿SOLICITUD DE vMix?</h1>
+        <div style="display:flex; gap: 20px;">
+            <button style="background:#00c853; width: 150px;" onclick="voto(true)">YES</button>
+            <button style="background:#d50000; width: 150px;" onclick="voto(false)">NO</button>
         </div>
     </div>
 
     <script>
-        const peer = new Peer({ config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
-        let localStream = null;
-        let pendingCall = null;
+        const peer = new Peer();
+        let streamLocal = null;
+        let llamadaEntrante = null;
 
-        peer.on('open', id => console.log("Tu ID:", id));
+        peer.on('open', id => document.getElementById('status').innerText = "Listo. ID: " + id);
 
-        async function startCapture() {
+        async function prepararPantalla() {
             try {
-                localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: { width: 1280, height: 720, frameRate: 30 } // Bajamos a 720p/30 solo para asegurar conexión inicial
-                });
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('shareBtn').classList.add('btn-stop');
-                document.getElementById('shareBtn').innerText = "Pantalla Lista";
-            } catch (e) { alert("Error al capturar pantalla"); }
+                streamLocal = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 60 }, audio: true });
+                document.getElementById('preview').srcObject = streamLocal;
+                document.getElementById('status').innerText = "Pantalla lista para transmitir";
+            } catch (e) { alert("Error al capturar"); }
         }
 
-        function copyLink() {
+        function copiarLink() {
             const link = window.location.href.split('index.html')[0] + "remoto.html?id=" + peer.id;
             navigator.clipboard.writeText(link);
-            alert("Link copiado para vMix");
+            alert("Link copiado.");
         }
 
         peer.on('call', call => {
-            pendingCall = call;
-            document.getElementById('modal-portero').style.display = 'block';
+            llamadaEntrante = call;
+            document.getElementById('portero').style.display = 'flex';
         });
 
-        function answer(yes) {
-            document.getElementById('modal-portero').style.display = 'none';
-            if (yes && localStream) {
-                pendingCall.answer(localStream);
+        function voto(si) {
+            document.getElementById('portero').style.display = 'none';
+            if (si && streamLocal) {
+                llamadaEntrante.answer(streamLocal);
+                document.getElementById('status').innerText = "Transmitiendo a vMix...";
             } else {
-                pendingCall.close();
+                llamadaEntrante.close();
             }
         }
     </script>
