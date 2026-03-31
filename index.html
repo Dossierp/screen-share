@@ -9,8 +9,8 @@
         body { margin: 0; background: var(--black); color: #fff; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
         .branding { text-align: center; margin-bottom: 10px; }
         .title { font-size: 2.2em; font-weight: bold; }
-        .subtitle { font-size: 1.1em; color: #888; margin-top: 5px; }
-        video { width: 80vw; max-height: 45vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; object-fit: contain; }
+        .subtitle { font-size: 1.1em; color: #888; }
+        video { width: 70vw; max-height: 40vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; }
         .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; text-align: center; width: 360px; margin-top: 10px; }
         button { padding: 15px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; text-transform: uppercase; font-size: 1em; }
         .btn-share { background: var(--green); color: white; }
@@ -18,8 +18,6 @@
         .btn-stop { background: var(--red) !important; }
         #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,1); width: 320px; }
         .modal-btns { display: flex; gap: 15px; margin-top: 25px; }
-        .btn-yes { background: var(--green); color: white; }
-        .btn-no { background: var(--red); color: white; }
     </style>
 </head>
 <body>
@@ -27,77 +25,55 @@
         <div class="title">SCREEN SHARE PRO - DP</div>
         <div class="subtitle">CONSOLA DE INVITADO</div>
     </div>
-    <video id="mainVideo" autoplay playsinline muted></video>
+    <video id="localVideo" autoplay playsinline muted></video>
     <div class="panel">
-        <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
-        <button id="linkBtn" class="btn-link" onclick="copyProductorLink()">Copiar Link para vMix</button>
+        <button id="shareBtn" class="btn-share" onclick="startCapture()">1. Compartir pantalla</button>
+        <button id="linkBtn" class="btn-link" onclick="copyLink()">2. Copiar Link para vMix</button>
     </div>
     <div id="modal-portero">
-        <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE VISTA</h2>
-        <p style="color: #bbb; margin-top: 10px;">¿Autorizar envío de señal a vMix?</p>
+        <h3>SOLICITUD ENTRANTE</h3>
+        <p>¿Enviar señal a vMix?</p>
         <div class="modal-btns">
-            <button class="btn-yes" onclick="responderPortero(true)">YES</button>
-            <button class="btn-no" onclick="responderPortero(false)">NO</button>
+            <button style="background:var(--green)" onclick="answer(true)">YES</button>
+            <button style="background:var(--red)" onclick="answer(false)">NO</button>
         </div>
     </div>
 
     <script>
-        const videoElem = document.getElementById('mainVideo');
-        const shareBtn = document.getElementById('shareBtn');
-        const modal = document.getElementById('modal-portero');
-        
-        // Configuración de servidores STUN de Google
-        const peer = new Peer({
-            config: {'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' }
-            ]}
-        });
-
+        const peer = new Peer({ config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
         let localStream = null;
-        let incomingCall = null;
+        let pendingCall = null;
 
-        async function toggleShare() {
-            if (!localStream) {
-                try {
-                    localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: { width: 1920, height: 1080, frameRate: 60 }, 
-                        audio: true 
-                    });
-                    videoElem.srcObject = localStream;
-                    shareBtn.innerText = "Dejar de compartir";
-                    shareBtn.classList.add('btn-stop');
-                } catch (e) { console.error(e); }
-            } else {
-                localStream.getTracks().forEach(t => t.stop());
-                localStream = null;
-                videoElem.srcObject = null;
-                shareBtn.innerText = "Compartir pantalla";
-                shareBtn.classList.remove('btn-stop');
-            }
+        peer.on('open', id => console.log("Tu ID:", id));
+
+        async function startCapture() {
+            try {
+                localStream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { width: 1280, height: 720, frameRate: 30 } // Bajamos a 720p/30 solo para asegurar conexión inicial
+                });
+                document.getElementById('localVideo').srcObject = localStream;
+                document.getElementById('shareBtn').classList.add('btn-stop');
+                document.getElementById('shareBtn').innerText = "Pantalla Lista";
+            } catch (e) { alert("Error al capturar pantalla"); }
         }
 
-        function copyProductorLink() {
-            const baseUrl = window.location.href.split(/[?#]/)[0];
-            const remotoUrl = baseUrl.replace('index.html', '') + "remoto.html?id=" + peer.id;
-            navigator.clipboard.writeText(remotoUrl);
-            alert("¡Link copiado!");
+        function copyLink() {
+            const link = window.location.href.split('index.html')[0] + "remoto.html?id=" + peer.id;
+            navigator.clipboard.writeText(link);
+            alert("Link copiado para vMix");
         }
 
-        peer.on('call', (call) => {
-            incomingCall = call;
-            modal.style.display = 'block';
+        peer.on('call', call => {
+            pendingCall = call;
+            document.getElementById('modal-portero').style.display = 'block';
         });
 
-        function responderPortero(si) {
-            modal.style.display = 'none';
-            if (si && incomingCall && localStream) {
-                incomingCall.answer(localStream);
-            } else if (si && !localStream) {
-                alert("Primero debes compartir pantalla.");
-                incomingCall.close();
+        function answer(yes) {
+            document.getElementById('modal-portero').style.display = 'none';
+            if (yes && localStream) {
+                pendingCall.answer(localStream);
             } else {
-                incomingCall.close();
+                pendingCall.close();
             }
         }
     </script>
