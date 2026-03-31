@@ -1,54 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>vMix Feed - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; cursor: pointer; }
+        body { margin: 0; background: black; overflow: hidden; }
         video { width: 100vw; height: 100vh; object-fit: contain; }
-        #info { position: fixed; top: 10px; left: 10px; font-family: sans-serif; color: #00c853; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="info">CONECTANDO...</div>
-    <video id="v" autoplay playsinline muted></video>
+    <video id="remoteVideo" autoplay playsinline></video>
 
     <script>
-        const video = document.getElementById('v');
-        const info = document.getElementById('info');
-        const peer = new Peer();
-        const guestId = new URLSearchParams(window.location.search).get('id');
-
-        function solicitarSeñal() {
-            if (!guestId || !peer.open) return;
-            info.innerText = "SOLICITANDO PANTALLA...";
-            
-            // Llamar solo una vez
-            const call = peer.call(guestId, new MediaStream());
-            
-            call.on('stream', s => {
-                info.style.display = 'none';
-                video.srcObject = s;
-                video.play();
+        const peer = new Peer(); // ID aleatorio para vMix
+        
+        peer.on('open', () => {
+            // Intentar conectar automáticamente al SLOT 1
+            const call = peer.call('DOSSIER-SLOT-1', new MediaStream());
+            call.on('stream', remoteStream => {
+                document.getElementById('remoteVideo').srcObject = remoteStream;
             });
-            
-            // Si pasan 8 segundos y no hay video, avisar
-            setTimeout(() => {
-                if (!video.srcObject) info.innerText = "ESPERANDO AUTORIZACIÓN (Haz clic para reintentar)";
-            }, 8000);
-        }
-
-        peer.on('open', solicitarSeñal);
-
-        // Si falló, un clic manual reintenta la llamada sin spam
-        document.body.onclick = () => {
-            if (!video.srcObject) {
-                solicitarSeñal();
-            } else {
-                video.play();
-            }
-        };
+        });
     </script>
 </body>
 </html>
