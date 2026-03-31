@@ -32,13 +32,13 @@
     <video id="mainVideo" autoplay playsinline muted></video>
 
     <div class="panel">
-        <button id="shareBtn" class="btn-share" onclick="toggleShare()">1. Compartir pantalla</button>
-        <button id="linkBtn" class="btn-link" onclick="copyProductorLink()">2. Copiar Link para Producción</button>
+        <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
+        <button id="linkBtn" class="btn-link" onclick="copyProductorLink()">Copiar Link para vMix</button>
     </div>
 
     <div id="modal-portero">
-        <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE ACCESO</h2>
-        <p style="color: #bbb; margin-top: 10px;">¿Deseas enviar tu señal a vMix?</p>
+        <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE VISTA</h2>
+        <p style="color: #bbb; margin-top: 10px;">¿Autorizar envío de señal a vMix?</p>
         <div class="modal-btns">
             <button class="btn-yes" onclick="responderPortero(true)">YES</button>
             <button class="btn-no" onclick="responderPortero(false)">NO</button>
@@ -53,7 +53,7 @@
         let localStream = null;
         let incomingCall = null;
 
-        peer.on('open', (id) => { console.log('ID:', id); });
+        peer.on('open', (id) => { console.log('Peer ID:', id); });
 
         async function toggleShare() {
             if (!localStream) {
@@ -76,11 +76,11 @@
         }
 
         function copyProductorLink() {
-            if (!peer.id) return alert("Cargando conexión...");
-            // Crea el link automático hacia la página /remoto
-            const link = window.location.href.replace('index.html', '') + "remoto?id=" + peer.id;
-            navigator.clipboard.writeText(link);
-            alert("Link copiado. Pégalo en tu vMix.");
+            if (!peer.id) return alert("Conectando al servidor...");
+            const baseUrl = window.location.href.split(/[?#]/)[0];
+            const remotoUrl = baseUrl.replace('index.html', '') + "remoto.html?id=" + peer.id;
+            navigator.clipboard.writeText(remotoUrl);
+            alert("¡Link copiado! Pégalo en tu vMix.");
         }
 
         peer.on('call', (call) => {
