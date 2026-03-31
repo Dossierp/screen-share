@@ -2,56 +2,40 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dossier Connect - Global</title>
+    <title>Dossier Connect</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        :root { --bg: #0f172a; --accent: #38bdf8; }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: #1e293b; padding: 30px; border-radius: 20px; text-align: center; border: 1px solid var(--accent); width: 400px; }
-        button { background: #000; border: 2px solid var(--accent); color: #fff; padding: 15px; border-radius: 10px; cursor: pointer; width: 100%; margin: 10px 0; font-weight: bold; }
-        button:hover { background: var(--accent); color: #000; }
-        video { width: 100%; border-radius: 10px; margin-top: 15px; background: #000; }
-        #status { font-size: 10px; color: var(--accent); margin-top: 10px; text-transform: uppercase; }
+        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; width: 450px; }
+        h2 { color: #38bdf8; margin: 0 0 20px 0; letter-spacing: 2px; }
+        button { background: #000; border: 2px solid #38bdf8; color: white; padding: 15px; border-radius: 10px; cursor: pointer; width: 100%; margin: 10px 0; font-weight: bold; }
+        button:hover { background: #38bdf8; color: #000; }
+        video { width: 100%; border-radius: 10px; margin-top: 20px; background: #000; aspect-ratio: 16/9; }
+        #status { font-size: 11px; color: #94a3b8; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>DOSSIER GLOBAL</h2>
+        <h2>DOSSIER PRODUCCIONES</h2>
         <button onclick="iniciar('screen')">🖥️ COMPARTIR PANTALLA</button>
         <button onclick="iniciar('camera')">📷 COMPARTIR CÁMARA</button>
         <video id="preview" autoplay muted playsinline></video>
-        <div id="status">INICIALIZANDO...</div>
+        <div id="status">ESTADO: INICIALIZANDO...</div>
     </div>
-
     <script>
-        // ID ÚNICO GLOBAL - No lo cambies para que el receptor te encuentre
-        const GLOBAL_ID = 'DOSSIER-PROD-LIVE-STREAM-2026'; 
-        
-        // Configuración con servidores de Google para saltar Firewalls
-        const peer = new Peer(GLOBAL_ID, {
-            config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] }
-        });
-
-        let streamLocal;
-
+        const ID_UNICO = 'DOSSIER-PROD-2026'; 
+        const peer = new Peer(ID_UNICO, { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
+        let localStream;
         peer.on('open', () => { document.getElementById('status').innerText = "LISTO PARA TRANSMITIR"; });
-
-        // Contestar siempre que vMix llame
-        peer.on('call', call => {
-            if (streamLocal) {
-                call.answer(streamLocal);
-                document.getElementById('status').innerText = "¡CONECTADO CON VMIX!";
-            }
-        });
-
+        peer.on('call', call => { if (localStream) call.answer(localStream); });
         async function iniciar(tipo) {
             try {
-                streamLocal = (tipo === 'screen') 
+                localStream = (tipo === 'screen') 
                     ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                     : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('preview').srcObject = streamLocal;
-                document.getElementById('status').innerText = "TRANSMITIENDO... YA PUEDES ABRIR VMIX";
-            } catch (e) { alert("Error al capturar: " + e); }
+                document.getElementById('preview').srcObject = localStream;
+                document.getElementById('status').innerText = "EN VIVO - ESPERANDO VMIX";
+            } catch (e) { alert("Error de permisos: " + e); }
         }
     </script>
 </body>
