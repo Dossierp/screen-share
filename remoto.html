@@ -1,1 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>FEED REMOTO - DP</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        video { width: 100vw; height: 100vh; object-fit: contain; }
+        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.3); font-family: sans-serif; font-size: 12px; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <div id="status">CONECTANDO A vMix...</div>
+    <video id="remoteVideo" autoplay playsinline muted></video>
 
+    <script>
+        const videoElem = document.getElementById('remoteVideo');
+        const statusElem = document.getElementById('status');
+        const peer = new Peer();
+        
+        // Obtener ID del invitado desde la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const guestId = urlParams.get('id');
+
+        peer.on('open', () => {
+            if (guestId) {
+                statusElem.innerText = "SOLICITANDO SEÑAL...";
+                const call = peer.call(guestId, new MediaStream());
+                
+                call.on('stream', (stream) => {
+                    statusElem.innerText = "EN VIVO";
+                    videoElem.srcObject = stream;
+                    videoElem.play();
+                });
+            } else {
+                statusElem.innerText = "ERROR: FALTA ID";
+            }
+        });
+        
+        // Auto-reconexión si haces clic (por si el navegador bloquea)
+        document.body.onclick = () => videoElem.play();
+    </script>
+</body>
+</html>
