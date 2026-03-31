@@ -23,19 +23,15 @@
     </style>
 </head>
 <body>
-
     <div class="branding">
         <div class="title">SCREEN SHARE PRO - DP</div>
         <div class="subtitle">CONSOLA DE INVITADO</div>
     </div>
-    
     <video id="mainVideo" autoplay playsinline muted></video>
-
     <div class="panel">
         <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
         <button id="linkBtn" class="btn-link" onclick="copyProductorLink()">Copiar Link para vMix</button>
     </div>
-
     <div id="modal-portero">
         <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE VISTA</h2>
         <p style="color: #bbb; margin-top: 10px;">¿Autorizar envío de señal a vMix?</p>
@@ -49,11 +45,17 @@
         const videoElem = document.getElementById('mainVideo');
         const shareBtn = document.getElementById('shareBtn');
         const modal = document.getElementById('modal-portero');
-        let peer = new Peer();
+        
+        // Configuración de servidores STUN de Google
+        const peer = new Peer({
+            config: {'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]}
+        });
+
         let localStream = null;
         let incomingCall = null;
-
-        peer.on('open', (id) => { console.log('Peer ID:', id); });
 
         async function toggleShare() {
             if (!localStream) {
@@ -76,11 +78,10 @@
         }
 
         function copyProductorLink() {
-            if (!peer.id) return alert("Conectando al servidor...");
             const baseUrl = window.location.href.split(/[?#]/)[0];
             const remotoUrl = baseUrl.replace('index.html', '') + "remoto.html?id=" + peer.id;
             navigator.clipboard.writeText(remotoUrl);
-            alert("¡Link copiado! Pégalo en tu vMix.");
+            alert("¡Link copiado!");
         }
 
         peer.on('call', (call) => {
@@ -90,8 +91,11 @@
 
         function responderPortero(si) {
             modal.style.display = 'none';
-            if (si && incomingCall) {
+            if (si && incomingCall && localStream) {
                 incomingCall.answer(localStream);
+            } else if (si && !localStream) {
+                alert("Primero debes compartir pantalla.");
+                incomingCall.close();
             } else {
                 incomingCall.close();
             }
