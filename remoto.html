@@ -2,16 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>FEED REMOTO - DP</title>
+    <title>FEED LIMPIO - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
         video { width: 100vw; height: 100vh; object-fit: contain; }
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.3); font-family: sans-serif; font-size: 12px; pointer-events: none; }
+        #status { position: fixed; top: 10px; left: 10px; color: rgba(0, 200, 83, 0.5); font-family: sans-serif; font-size: 14px; pointer-events: none; text-transform: uppercase; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="status">CONECTANDO A vMix...</div>
+    <div id="status">ESPERANDO SEÑAL...</div>
     <video id="remoteVideo" autoplay playsinline muted></video>
 
     <script>
@@ -19,27 +19,27 @@
         const statusElem = document.getElementById('status');
         const peer = new Peer();
         
-        // Obtener ID del invitado desde la URL
         const urlParams = new URLSearchParams(window.location.search);
         const guestId = urlParams.get('id');
 
         peer.on('open', () => {
             if (guestId) {
-                statusElem.innerText = "SOLICITANDO SEÑAL...";
+                statusElem.innerText = "SOLICITANDO ACCESO...";
+                // Intentamos llamar al invitado
                 const call = peer.call(guestId, new MediaStream());
                 
                 call.on('stream', (stream) => {
-                    statusElem.innerText = "EN VIVO";
+                    statusElem.style.display = 'none';
                     videoElem.srcObject = stream;
                     videoElem.play();
                 });
             } else {
-                statusElem.innerText = "ERROR: FALTA ID";
+                statusElem.innerText = "ERROR: LINK INVÁLIDO";
             }
         });
-        
-        // Auto-reconexión si haces clic (por si el navegador bloquea)
-        document.body.onclick = () => videoElem.play();
+
+        // Forzar play si el navegador bloquea
+        document.body.onclick = () => { videoElem.play(); statusElem.style.display = 'none'; };
     </script>
 </body>
 </html>
