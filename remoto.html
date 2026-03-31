@@ -2,44 +2,53 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>FEED vMix - DP</title>
+    <title>vMix Feed - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; }
+        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; color: white; cursor: pointer; }
         video { width: 100vw; height: 100vh; object-fit: contain; }
-        #msg { position: absolute; font-family: sans-serif; text-transform: uppercase; font-weight: bold; color: #00c853; }
+        #info { position: fixed; top: 10px; left: 10px; font-family: sans-serif; color: #00c853; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div id="msg">Buscando señal...</div>
+    <div id="info">CONECTANDO...</div>
     <video id="v" autoplay playsinline muted></video>
 
     <script>
-        const v = document.getElementById('v');
-        const m = document.getElementById('msg');
+        const video = document.getElementById('v');
+        const info = document.getElementById('info');
         const peer = new Peer();
-        const idInvitado = new URLSearchParams(window.location.search).get('id');
+        const guestId = new URLSearchParams(window.location.search).get('id');
 
-        function conectar() {
-            if (!idInvitado || !peer.open) return;
+        function solicitarSeñal() {
+            if (!guestId || !peer.open) return;
+            info.innerText = "SOLICITANDO PANTALLA...";
             
-            m.innerText = "SOLICITANDO PANTALLA...";
-            const call = peer.call(idInvitado, new MediaStream()); // Llamada de aviso
+            // Llamar solo una vez
+            const call = peer.call(guestId, new MediaStream());
             
             call.on('stream', s => {
-                m.style.display = 'none';
-                v.srcObject = s;
-                v.play();
+                info.style.display = 'none';
+                video.srcObject = s;
+                video.play();
             });
-
-            // Si en 3 segundos no hay video, reintenta automáticamente
+            
+            // Si pasan 8 segundos y no hay video, avisar
             setTimeout(() => {
-                if (!v.srcObject) conectar();
-            }, 3000);
+                if (!video.srcObject) info.innerText = "ESPERANDO AUTORIZACIÓN (Haz clic para reintentar)";
+            }, 8000);
         }
 
-        peer.on('open', conectar);
-        document.body.onclick = () => v.play();
+        peer.on('open', solicitarSeñal);
+
+        // Si falló, un clic manual reintenta la llamada sin spam
+        document.body.onclick = () => {
+            if (!video.srcObject) {
+                solicitarSeñal();
+            } else {
+                video.play();
+            }
+        };
     </script>
 </body>
 </html>
