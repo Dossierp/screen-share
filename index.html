@@ -5,17 +5,19 @@
     <title>Screen Share PRO - DP - Dossier Producciones</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        .branding { text-align: center; margin-bottom: 20px; }
-        .title { font-size: 2em; font-weight: bold; }
-        .subtitle { font-size: 1em; color: #bbb; }
-        video { width: 80vw; max-height: 60vh; background: #050505; border: 2px solid #333; border-radius: 10px; object-fit: contain; }
-        .panel { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; margin-top: 15px; width: 350px; }
-        input { padding: 12px; border-radius: 5px; border: 1px solid #444; margin-bottom: 12px; width: 100%; text-align: center; background: #222; color: #eee; }
-        button { padding: 12px 25px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; width: 100%; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .branding { text-align: center; margin-bottom: 10px; }
+        .title { font-size: 2.2em; font-weight: bold; letter-spacing: 1px; }
+        .subtitle { font-size: 1.1em; color: #888; margin-top: 5px; }
+        video { width: 90vw; max-height: 60vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; text-align: center; width: 350px; margin-top: 10px; }
+        #status { font-size: 0.9em; color: #ffeb3b; margin-bottom: 10px; font-weight: bold; }
+        #id-display { color: #00e676; font-size: 1em; font-weight: bold; margin-bottom: 15px; word-break: break-all; border: 1px dashed #333; padding: 5px; }
+        input { padding: 12px; border-radius: 6px; border: 1px solid #444; margin-bottom: 10px; width: 90%; background: #000; color: #00e676; text-align: center; font-family: monospace; font-size: 1.1em; }
+        button { padding: 12px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; text-transform: uppercase; }
         .btn-share { background: #00c853; color: white; }
         .btn-view { background: #2979ff; color: white; }
-        #id-display { color: #00e676; font-size: 1.1em; font-weight: bold; margin-bottom: 10px; }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); }
     </style>
 </head>
 <body>
@@ -24,51 +26,85 @@
         <div class="subtitle">www.dossierproducciones.com</div>
     </div>
     
-    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="mainVideo" autoplay playsinline></video>
 
     <div class="panel">
-        <div id="id-display">Cargando ID...</div>
+        <div id="status">SISTEMA INICIALIZADO</div>
+        <div id="id-display">GENERANDO ID...</div>
         
-        <button class="btn-share" onclick="startSharing()">COMPARTIR MI PANTALLA</button>
-        
-        <hr style="border: 0.5px solid #333; margin: 20px 0;">
-        
-        <input type="text" id="peer-id-input" placeholder="Pega aquí el ID del invitado">
-        <button class="btn-view" onclick="connectToPeer()">VER PANTALLA REMOTA</button>
+        <button class="btn-share" onclick="startSharing()">1. COMPARTIR MI PANTALLA (INVITADO 720p)</button>
+        <hr style="border: 0.5px solid #222; margin: 15px 0;">
+        <input type="text" id="peer-id-input" placeholder="PEGAR ID AQUÍ">
+        <button class="btn-view" onclick="connectToPeer()">2. VER PANTALLA REMOTA (FULL HD 1080p)</button>
     </div>
 
     <script>
-        const peer = new Peer(); // ID automático
+        const videoElem = document.getElementById('mainVideo');
+        const statusElem = document.getElementById('status');
+        const peer = new Peer(); 
         let localStream;
 
         peer.on('open', (id) => {
             document.getElementById('id-display').innerText = "TU ID: " + id;
         });
 
+        peer.on('error', (err) => {
+            statusElem.innerText = "ERROR DE CONEXIÓN: " + err.type;
+            console.error(err);
+        });
+
+        // 1. EL INVITADO COMPARTE (720p)
         async function startSharing() {
             try {
-                localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-                document.getElementById('remoteVideo').srcObject = localStream;
-                // El invitado ve su propia captura
-            } catch (err) { console.error(err); }
+                statusElem.innerText = "CONFIGURANDO CAPTURA 720p...";
+                localStream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 60 } 
+                    }, 
+                    audio: true 
+                });
+                videoElem.srcObject = localStream;
+                statusElem.innerText = "EN VIVO: COMPARTE TU ID CON EL PRODUCTOR";
+            } catch (err) {
+                statusElem.innerText = "CAPTURA CANCELADA";
+            }
         }
 
+        // 2. EL PRODUCTOR CONECTA (Configura visualización a 1080p)
         function connectToPeer() {
-            const remoteId = document.getElementById('peer-id-input').value;
-            if (!remoteId) return alert("Pega el ID del invitado.");
+            const remoteId = document.getElementById('peer-id-input').value.trim();
+            if (!remoteId) {
+                statusElem.innerText = "ERROR: FALTA ID";
+                return;
+            }
             
-            const call = peer.call(remoteId, localStream || new MediaStream());
+            statusElem.innerText = "ESTABLECIENDO VÍNCULO...";
             
-            call.on('stream', (userVideoStream) => {
-                document.getElementById('remoteVideo').srcObject = userVideoStream;
-                // Tú ves la pantalla del invitado
+            // Forzamos la conexión con un stream vacío si el productor no comparte
+            const call = peer.call(remoteId, new MediaStream());
+            
+            call.on('stream', (remoteStream) => {
+                statusElem.innerText = "RECIBIENDO SEÑAL FULL HD";
+                videoElem.srcObject = remoteStream;
+                
+                // Forzar reproducción para evitar bloqueos del navegador
+                videoElem.play().catch(e => {
+                    console.log("Auto-play bloqueado, intentando con mute...");
+                    videoElem.muted = true;
+                    videoElem.play();
+                });
             });
         }
 
+        // RESPUESTA AUTOMÁTICA DEL LADO DEL INVITADO
         peer.on('call', (call) => {
-            call.answer(localStream);
-            call.on('stream', (userVideoStream) => {
-                document.getElementById('remoteVideo').srcObject = userVideoStream;
+            statusElem.innerText = "CONEXIÓN ENTRANTE...";
+            call.answer(localStream); 
+            
+            call.on('stream', (remoteStream) => {
+                if(!videoElem.srcObject) videoElem.srcObject = remoteStream;
             });
         });
     </script>
