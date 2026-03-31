@@ -18,10 +18,10 @@
         
         .btn-share { background: var(--green); color: white; }
         .btn-view { background: var(--blue); color: white; }
-        .btn-active { background: var(--red) !important; }
+        .btn-stop { background: var(--red) !important; color: white; }
 
-        /* Modal de Seguridad (Portero) */
-        #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.8); width: 300px; }
+        /* Portero */
+        #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.9); width: 300px; }
         .modal-btns { display: flex; gap: 15px; margin-top: 25px; }
         .btn-yes { background: var(--green); color: white; }
         .btn-no { background: var(--red); color: white; }
@@ -34,10 +34,10 @@
         <div class="subtitle">www.dossierproducciones.com</div>
     </div>
     
-    <video id="mainVideo" autoplay playsinline></video>
+    <video id="mainVideo" autoplay playsinline muted></video>
 
     <div class="panel">
-        <div id="id-display">GENERANDO IDENTIFICADOR...</div>
+        <div id="id-display">CONECTANDO...</div>
         
         <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
         <hr style="border: 0.5px solid #222; margin: 20px 0;">
@@ -69,7 +69,6 @@
             document.getElementById('id-display').innerText = "TU ID: " + id;
         });
 
-        // --- COMPARTIR ---
         async function toggleShare() {
             if (!localStream) {
                 try {
@@ -79,9 +78,7 @@
                     });
                     videoElem.srcObject = localStream;
                     shareBtn.innerText = "Dejar de compartir";
-                    shareBtn.classList.add('btn-active');
-                    
-                    // Sincronizar con el botón "Stop Sharing" del navegador
+                    shareBtn.classList.add('btn-stop');
                     localStream.getVideoTracks()[0].onended = () => resetShareUI();
                 } catch (err) { console.error(err); }
             } else {
@@ -96,30 +93,27 @@
             }
             videoElem.srcObject = null;
             shareBtn.innerText = "Compartir pantalla";
-            shareBtn.classList.remove('btn-active');
+            shareBtn.classList.remove('btn-stop');
         }
 
-        // --- VER ---
         function toggleView() {
             if (!currentCall) {
                 const remoteId = document.getElementById('peer-id-input').value.trim();
-                if (!remoteId) return alert("Pega el ID primero");
+                if (!remoteId) return alert("Pega el ID");
                 
-                // Pedimos ver a través de una llamada
+                // Iniciamos la conexión
                 currentCall = peer.call(remoteId, new MediaStream());
                 viewBtn.innerText = "Dejar de ver";
-                viewBtn.classList.add('btn-active');
+                viewBtn.classList.add('btn-stop');
 
                 currentCall.on('stream', (remoteStream) => {
-                    // Configuración interna de visualización a 1080p
                     videoElem.srcObject = remoteStream;
-                    videoElem.play().catch(() => {
-                        videoElem.muted = true;
-                        videoElem.play();
-                    });
+                    // Intentamos reproducir con fuerza
+                    videoElem.onloadedmetadata = () => videoElem.play();
                 });
 
                 currentCall.on('close', () => resetViewUI());
+                currentCall.on('error', () => resetViewUI());
             } else {
                 resetViewUI();
             }
@@ -130,10 +124,9 @@
             currentCall = null;
             videoElem.srcObject = null;
             viewBtn.innerText = "Ver pantalla remota";
-            viewBtn.classList.remove('btn-active');
+            viewBtn.classList.remove('btn-stop');
         }
 
-        // --- LÓGICA DEL PORTERO (INVITADO RECIBE PETICIÓN) ---
         peer.on('call', (call) => {
             incomingCall = call;
             modal.style.display = 'block';
@@ -142,7 +135,8 @@
         function responderPortero(autorizado) {
             modal.style.display = 'none';
             if (autorizado && incomingCall) {
-                incomingCall.answer(localStream); // Envía el stream (720p)
+                // Respondemos enviando nuestra pantalla al productor
+                incomingCall.answer(localStream);
             } else if (incomingCall) {
                 incomingCall.close();
             }
