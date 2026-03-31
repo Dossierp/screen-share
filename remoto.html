@@ -2,24 +2,53 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <title>Dossier Connect Pro</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        .container { background: var(--card); padding: 2.5rem; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); text-align: center; width: 90%; max-width: 500px; border: 1px solid rgba(255,255,255,0.1); }
+        h2 { margin: 0 0 0.5rem 0; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; font-size: 1.4rem; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 2rem 0; }
+        button { background: #000; border: 2px solid var(--accent); color: white; padding: 1.5rem; border-radius: 12px; cursor: pointer; transition: 0.3s; display: flex; flex-direction: column; align-items: center; font-weight: bold; }
+        button:hover { background: var(--accent); color: #000; transform: translateY(-5px); }
+        .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+        video { width: 100%; border-radius: 10px; background: #000; border: 2px solid #334155; aspect-ratio: 16/9; object-fit: cover; }
+        #status { margin-top: 1.5rem; font-size: 0.7rem; color: #64748b; letter-spacing: 1.5px; text-transform: uppercase; }
+        .live { color: var(--accent) !important; text-shadow: 0 0 10px var(--accent); }
     </style>
 </head>
 <body>
-    <video id="v" autoplay playsinline></video>
+    <div class="container">
+        <h2>DOSSIER PRODUCCIONES</h2>
+        <div class="grid">
+            <button onclick="iniciar('screen')"><span class="icon">🖥️</span>PRESENTACIÓN</button>
+            <button onclick="iniciar('camera')"><span class="icon">📷</span>CÁMARA WEB</button>
+        </div>
+        <video id="preview" autoplay muted playsinline></video>
+        <div id="status">ESTADO: <span id="id-display">CONECTANDO...</span></div>
+    </div>
     <script>
-        const TARGET = 'DOSSIER-PROD-2026';
-        const peer = new Peer({ config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
-        function conectar() {
-            const call = peer.call(TARGET, new MediaStream());
-            call.on('stream', s => { document.getElementById('v').srcObject = s; });
-            setTimeout(() => { if (!document.getElementById('v').srcObject) conectar(); }, 4000);
+        const ID_FINAL = 'DOSSIER-PROD-STREAM-2026';
+        const peer = new Peer(ID_FINAL, {
+            config: { 'iceServers': [
+                { 'urls': 'stun:stun.l.google.com:19302' },
+                { 'urls': 'stun:stun1.l.google.com:19302' },
+                { 'urls': 'stun:stun2.l.google.com:19302' }
+            ]}
+        });
+        let localStream;
+        peer.on('open', () => { document.getElementById('id-display').innerText = "LISTO PARA TRANSMITIR"; });
+        peer.on('call', call => { if (localStream) { call.answer(localStream); document.getElementById('id-display').innerText = "VMIX CONECTADO"; } });
+        async function iniciar(tipo) {
+            try {
+                if (localStream) localStream.getTracks().forEach(t => t.stop());
+                localStream = (tipo === 'screen') ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }) : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('preview').srcObject = localStream;
+                document.getElementById('id-display').innerText = "TRANSMITIENDO - SEÑAL ABIERTA";
+                document.getElementById('id-display').classList.add('live');
+            } catch (e) { alert("Error: " + e); }
         }
-        peer.on('open', conectar);
-        peer.on('error', () => setTimeout(conectar, 4000));
     </script>
 </body>
 </html>
