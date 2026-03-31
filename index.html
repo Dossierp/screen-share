@@ -31,11 +31,7 @@
     <script>
         const ID_FINAL = 'DOSSIER-PROD-STREAM-2026';
         const peer = new Peer(ID_FINAL, {
-            config: { 'iceServers': [
-                { 'urls': 'stun:stun.l.google.com:19302' },
-                { 'urls': 'stun:stun1.l.google.com:19302' },
-                { 'urls': 'stun:stun2.l.google.com:19302' }
-            ]}
+            config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] }
         });
         let localStream;
         peer.on('open', () => { document.getElementById('id-display').innerText = "LISTO PARA TRANSMITIR"; });
@@ -45,7 +41,7 @@
                 if (localStream) localStream.getTracks().forEach(t => t.stop());
                 localStream = (tipo === 'screen') ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }) : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('preview').srcObject = localStream;
-                document.getElementById('id-display').innerText = "TRANSMITIENDO - SEÑAL ABIERTA";
+                document.getElementById('id-display').innerText = "TRANSMITIENDO... ABRE VMIX";
                 document.getElementById('id-display').classList.add('live');
             } catch (e) { alert("Error: " + e); }
         }
