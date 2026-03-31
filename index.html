@@ -2,40 +2,128 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dossier Connect</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dossier Connect - Global Pro</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { background: #0f172a; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: #1e293b; padding: 40px; border-radius: 20px; text-align: center; border: 2px solid #38bdf8; width: 450px; }
-        h2 { color: #38bdf8; margin: 0 0 20px 0; letter-spacing: 2px; }
-        button { background: #000; border: 2px solid #38bdf8; color: white; padding: 15px; border-radius: 10px; cursor: pointer; width: 100%; margin: 10px 0; font-weight: bold; }
-        button:hover { background: #38bdf8; color: #000; }
-        video { width: 100%; border-radius: 10px; margin-top: 20px; background: #000; aspect-ratio: 16/9; }
-        #status { font-size: 11px; color: #94a3b8; margin-top: 15px; }
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --text: #f8fafc;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        h2 {
+            margin: 0 0 0.5rem 0;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-size: 1.4rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        button {
+            background: #000;
+            border: 2px solid var(--accent);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-weight: bold;
+        }
+        button:hover {
+            background: var(--accent);
+            color: #000;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.4);
+        }
+        .icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+        video {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            border: 2px solid #334155;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+        }
+        #status {
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            color: #64748b;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+        .live { color: var(--accent) !important; text-shadow: 0 0 10px var(--accent); }
     </style>
 </head>
 <body>
-    <div class="box">
+    <div class="container">
         <h2>DOSSIER PRODUCCIONES</h2>
-        <button onclick="iniciar('screen')">🖥️ COMPARTIR PANTALLA</button>
-        <button onclick="iniciar('camera')">📷 COMPARTIR CÁMARA</button>
+        <div class="grid">
+            <button onclick="iniciar('screen')">
+                <span class="icon">🖥️</span>PRESENTACIÓN
+            </button>
+            <button onclick="iniciar('camera')">
+                <span class="icon">📷</span>CÁMARA WEB
+            </button>
+        </div>
         <video id="preview" autoplay muted playsinline></video>
-        <div id="status">ESTADO: INICIALIZANDO...</div>
+        <div id="status">ESTADO: <span id="id-display">CONECTANDO...</span></div>
     </div>
+
     <script>
-        const ID_UNICO = 'DOSSIER-PROD-2026'; 
-        const peer = new Peer(ID_UNICO, { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] } });
+        const ID_FINAL = 'DOSSIER-PROD-2026';
+        const peer = new Peer(ID_FINAL, {
+            config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+        });
         let localStream;
-        peer.on('open', () => { document.getElementById('status').innerText = "LISTO PARA TRANSMITIR"; });
-        peer.on('call', call => { if (localStream) call.answer(localStream); });
+
+        peer.on('open', () => {
+            document.getElementById('id-display').innerText = "LISTO PARA TRANSMITIR";
+        });
+
+        peer.on('call', call => {
+            if (localStream) call.answer(localStream);
+        });
+
         async function iniciar(tipo) {
             try {
+                if (localStream) localStream.getTracks().forEach(t => t.stop());
                 localStream = (tipo === 'screen') 
                     ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
                     : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 document.getElementById('preview').srcObject = localStream;
-                document.getElementById('status').innerText = "EN VIVO - ESPERANDO VMIX";
-            } catch (e) { alert("Error de permisos: " + e); }
+                document.getElementById('id-display').innerText = "EN VIVO - SEÑAL ABIERTA";
+                document.getElementById('id-display').classList.add('live');
+            } catch (e) { alert("Error: " + e); }
         }
     </script>
 </body>
