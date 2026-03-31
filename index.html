@@ -11,8 +11,7 @@
         .title { font-size: 2.2em; font-weight: bold; }
         .subtitle { font-size: 1.1em; color: #888; margin-top: 5px; }
         
-        /* El área de video: lista para vMix */
-        video { width: 90vw; max-height: 55vh; background: #050505; border: 1px solid #333; border-radius: 8px; margin-top: 10px; object-fit: contain; }
+        video { width: 90vw; max-height: 55vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; object-fit: contain; }
         
         .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; text-align: center; width: 360px; margin-top: 10px; }
         #id-display { color: var(--green); font-size: 0.9em; font-weight: bold; margin-bottom: 15px; border: 1px dashed #333; padding: 8px; border-radius: 5px; word-break: break-all; }
@@ -21,9 +20,8 @@
         button { padding: 15px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; text-transform: uppercase; font-size: 1em; }
         .btn-share { background: var(--green); color: white; }
         .btn-view { background: var(--blue); color: white; }
-        .btn-active { background: var(--red) !important; color: white; }
+        .btn-stop { background: var(--red) !important; color: white; }
 
-        /* Portero Estilo Dossier */
         #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,1); width: 320px; }
         .modal-btns { display: flex; gap: 15px; margin-top: 25px; }
         .btn-yes { background: var(--green); color: white; }
@@ -40,7 +38,7 @@
     <video id="mainVideo" autoplay playsinline muted></video>
 
     <div class="panel">
-        <div id="id-display">IDENTIFICANDO EQUIPO...</div>
+        <div id="id-display">IDENTIFICANDO...</div>
         
         <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
         <hr style="border: 0.5px solid #222; margin: 20px 0;">
@@ -50,7 +48,7 @@
 
     <div id="modal-portero">
         <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE VISTA</h2>
-        <p style="color: #bbb; margin-top: 10px;">¿Alguien quiere ver tu pantalla?</p>
+        <p style="color: #bbb; margin-top: 10px;">¿Autorizar acceso a tu pantalla?</p>
         <div class="modal-btns">
             <button class="btn-yes" onclick="responderPortero(true)">YES</button>
             <button class="btn-no" onclick="responderPortero(false)">NO</button>
@@ -62,7 +60,14 @@
         const shareBtn = document.getElementById('shareBtn');
         const viewBtn = document.getElementById('viewBtn');
         const modal = document.getElementById('modal-portero');
-        const peer = new Peer();
+        
+        // PeerJS con configuración de servidores robusta
+        const peer = new Peer({
+            config: {'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]}
+        });
         
         let localStream = null;
         let currentCall = null;
@@ -72,19 +77,20 @@
             document.getElementById('id-display').innerText = "TU ID: " + id;
         });
 
-        // COMPARTIR (GUEST)
+        // --- ACCIÓN COMPARTIR ---
         async function toggleShare() {
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: { width: 1920, height: 1080, frameRate: 60 }, 
+                        video: { cursor: "always", frameRate: 60 }, 
                         audio: true 
                     });
                     videoElem.srcObject = localStream;
                     shareBtn.innerText = "Dejar de compartir";
-                    shareBtn.classList.add('btn-active');
+                    shareBtn.classList.add('btn-stop');
+                    
                     localStream.getVideoTracks()[0].onended = () => resetShareUI();
-                } catch (err) { console.error("Error al capturar:", err); }
+                } catch (err) { console.error(err); }
             } else {
                 resetShareUI();
             }
@@ -92,37 +98,33 @@
 
         function resetShareUI() {
             if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
+                localStream.getTracks().forEach(t => t.stop());
                 localStream = null;
             }
             videoElem.srcObject = null;
             shareBtn.innerText = "Compartir pantalla";
-            shareBtn.classList.remove('btn-active');
+            shareBtn.classList.remove('btn-stop');
         }
 
-        // VER (PRODUCCIÓN)
+        // --- ACCIÓN VER ---
         function toggleView() {
             if (!currentCall) {
                 const remoteId = document.getElementById('peer-id-input').value.trim();
-                if (!remoteId) return alert("ID necesario");
+                if (!remoteId) return alert("Pega el ID del invitado.");
                 
-                // Llamamos enviando un stream vacío para activar el handshake
+                // Llamamos (Enviamos un stream vacío para negociar)
                 currentCall = peer.call(remoteId, new MediaStream());
+                viewBtn.innerText = "Cerrando...";
+                viewBtn.classList.add('btn-stop');
                 viewBtn.innerText = "Dejar de ver";
-                viewBtn.classList.add('btn-active');
 
                 currentCall.on('stream', (remoteStream) => {
-                    console.log("Stream recibido, conectando al video...");
                     videoElem.srcObject = remoteStream;
-                    
-                    // Truco para vMix: Forzar carga y reproducción
-                    videoElem.load();
-                    videoElem.onloadedmetadata = () => {
-                        videoElem.play().catch(e => console.log("Play diferido"));
-                    };
+                    videoElem.play();
                 });
 
                 currentCall.on('close', () => resetViewUI());
+                currentCall.on('error', () => resetViewUI());
             } else {
                 resetViewUI();
             }
@@ -133,27 +135,30 @@
             currentCall = null;
             videoElem.srcObject = null;
             viewBtn.innerText = "Ver pantalla remota";
-            viewBtn.classList.remove('btn-active');
+            viewBtn.classList.remove('btn-stop');
         }
 
-        // EL PORTERO
+        // --- EL PORTERO ---
         peer.on('call', (call) => {
             incomingCall = call;
             modal.style.display = 'block';
         });
 
-        function responderPortero(autorizado) {
+        async function responderPortero(autorizado) {
             modal.style.display = 'none';
-            if (autorizado && incomingCall) {
-                // Respondemos con el stream real si existe
-                incomingCall.answer(localStream);
-            } else if (incomingCall) {
+            if (autorizado) {
+                // Si el invitado NO ha compartido pantalla aún, se la pedimos antes de contestar
+                if (!localStream) {
+                    await toggleShare();
+                }
+                // Ahora sí, contestamos con el video real
+                if (localStream) {
+                    incomingCall.answer(localStream);
+                }
+            } else {
                 incomingCall.close();
             }
         }
-        
-        // Si el video se queda en negro por error de carga, un clic lo despierta
-        videoElem.onclick = () => videoElem.play();
     </script>
 </body>
 </html>
