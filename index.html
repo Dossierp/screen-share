@@ -2,48 +2,97 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Dossier Presenter - LAPTOP 1</title>
+    <title>Dossier Connect - Presentador</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-color: #f8fafc;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        button {
+            background: #000;
+            border: 2px solid var(--accent-color);
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+        .icon { font-size: 2rem; display: block; margin-bottom: 5px; }
+        video { width: 100%; border-radius: 8px; margin-top: 15px; background: #000; }
+    </style>
 </head>
 <body>
+
     <div class="container">
-        <h2>LAPTOP 1</h2>
+        <h2 style="color: var(--accent-color);">DOSSIER PRODUCCIONES</h2>
+        <p>Selecciona qué transmitir a vMix:</p>
+        
         <div class="grid">
             <button onclick="startShare('screen')">
-                <span class="icon">🖥️</span>
-                Presentación
+                <span class="icon">🖥️</span> Pantalla
             </button>
             <button onclick="startShare('camera')">
-                <span class="icon">📷</span>
-                Cámara Web
+                <span class="icon">📷</span> Cámara
             </button>
         </div>
+
         <video id="preview" autoplay muted playsinline></video>
-        <p id="status">Estado: Esperando acción...</p>
+        <p id="status" style="font-size: 12px; opacity: 0.6; margin-top: 10px;">ID: ESPERANDO...</p>
     </div>
 
     <script>
-        const peer = new Peer('DOSSIER-SLOT-1'); // ID Fijo para que vMix sepa a quién buscar
+        // Cambia 'EVENTO-DOSSIER' por un nombre único para tu evento
+        const peer = new Peer('EVENTO-DOSSIER-SLOT1'); 
         let localStream;
+
+        peer.on('open', id => {
+            document.getElementById('status').innerText = "LISTO PARA CONECTAR: " + id;
+        });
 
         async function startShare(type) {
             try {
-                if (type === 'screen') {
-                    localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-                } else {
-                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                }
+                localStream = (type === 'screen') 
+                    ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+                    : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 
                 document.getElementById('preview').srcObject = localStream;
-                document.getElementById('status').innerText = "Estado: Transmitiendo...";
-                
-                // Escuchar llamadas entrantes de vMix
-                peer.on('call', call => {
-                    call.answer(localStream);
-                });
+                peer.on('call', call => call.answer(localStream));
             } catch (err) {
-                console.error("Error:", err);
+                alert("Error al acceder a la fuente: " + err);
             }
         }
     </script>
