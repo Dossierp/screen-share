@@ -5,7 +5,7 @@
     <title>FEED LIMPIO - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: pointer; }
         video { width: 100vw; height: 100vh; object-fit: contain; }
         #status { position: fixed; top: 10px; left: 10px; color: rgba(0, 200, 83, 0.5); font-family: sans-serif; font-size: 14px; pointer-events: none; text-transform: uppercase; font-weight: bold; }
     </style>
@@ -17,15 +17,20 @@
     <script>
         const videoElem = document.getElementById('remoteVideo');
         const statusElem = document.getElementById('status');
-        const peer = new Peer();
+        
+        const peer = new Peer({
+            config: {'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'stun:stun1.l.google.com:19302' }
+            ]}
+        });
         
         const urlParams = new URLSearchParams(window.location.search);
         const guestId = urlParams.get('id');
 
-        peer.on('open', () => {
-            if (guestId) {
+        function iniciarLlamada() {
+            if (guestId && peer.open) {
                 statusElem.innerText = "SOLICITANDO ACCESO...";
-                // Intentamos llamar al invitado
                 const call = peer.call(guestId, new MediaStream());
                 
                 call.on('stream', (stream) => {
@@ -33,13 +38,25 @@
                     videoElem.srcObject = stream;
                     videoElem.play();
                 });
-            } else {
-                statusElem.innerText = "ERROR: LINK INVÁLIDO";
+                
+                // Si en 10 segundos no hay stream, avisar
+                setTimeout(() => {
+                    if (!videoElem.srcObject) statusElem.innerText = "REINTENTANDO... (Haz clic aquí)";
+                }, 10000);
             }
-        });
+        }
 
-        // Forzar play si el navegador bloquea
-        document.body.onclick = () => { videoElem.play(); statusElem.style.display = 'none'; };
+        peer.on('open', iniciarLlamada);
+
+        // Si vMix bloquea el autoplay o la señal falla, un clic reintenta todo
+        document.body.onclick = () => {
+            if (!videoElem.srcObject) {
+                iniciarLlamada();
+            } else {
+                videoElem.play();
+                statusElem.style.display = 'none';
+            }
+        };
     </script>
 </body>
 </html>
