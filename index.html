@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Screen Share PRO - DP - Dossier Producciones</title>
+    <title>Invitado - Screen Share PRO - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root { --green: #00c853; --red: #d50000; --blue: #2979ff; --black: #000; }
@@ -10,18 +10,12 @@
         .branding { text-align: center; margin-bottom: 10px; }
         .title { font-size: 2.2em; font-weight: bold; }
         .subtitle { font-size: 1.1em; color: #888; margin-top: 5px; }
-        
-        video { width: 90vw; max-height: 55vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; object-fit: contain; }
-        
+        video { width: 80vw; max-height: 45vh; background: #050505; border: 2px solid #333; border-radius: 12px; margin-top: 10px; object-fit: contain; }
         .panel { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; text-align: center; width: 360px; margin-top: 10px; }
-        #id-display { color: var(--green); font-size: 0.9em; font-weight: bold; margin-bottom: 15px; border: 1px dashed #333; padding: 8px; border-radius: 5px; word-break: break-all; }
-        input { padding: 12px; border-radius: 6px; border: 1px solid #444; margin-bottom: 10px; width: 90%; background: #000; color: var(--green); text-align: center; font-family: monospace; font-size: 1.1em; }
-        
         button { padding: 15px; margin: 5px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; text-transform: uppercase; font-size: 1em; }
         .btn-share { background: var(--green); color: white; }
-        .btn-view { background: var(--blue); color: white; }
-        .btn-stop { background: var(--red) !important; color: white; }
-
+        .btn-link { background: var(--blue); color: white; }
+        .btn-stop { background: var(--red) !important; }
         #modal-portero { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 3px solid var(--blue); padding: 30px; border-radius: 20px; z-index: 1000; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,1); width: 320px; }
         .modal-btns { display: flex; gap: 15px; margin-top: 25px; }
         .btn-yes { background: var(--green); color: white; }
@@ -32,23 +26,19 @@
 
     <div class="branding">
         <div class="title">SCREEN SHARE PRO - DP</div>
-        <div class="subtitle">www.dossierproducciones.com</div>
+        <div class="subtitle">CONSOLA DE INVITADO</div>
     </div>
     
     <video id="mainVideo" autoplay playsinline muted></video>
 
     <div class="panel">
-        <div id="id-display">IDENTIFICANDO...</div>
-        
-        <button id="shareBtn" class="btn-share" onclick="toggleShare()">Compartir pantalla</button>
-        <hr style="border: 0.5px solid #222; margin: 20px 0;">
-        <input type="text" id="peer-id-input" placeholder="PEGAR ID AQUÍ">
-        <button id="viewBtn" class="btn-view" onclick="toggleView()">Ver pantalla remota</button>
+        <button id="shareBtn" class="btn-share" onclick="toggleShare()">1. Compartir pantalla</button>
+        <button id="linkBtn" class="btn-link" onclick="copyProductorLink()">2. Copiar Link para Producción</button>
     </div>
 
     <div id="modal-portero">
-        <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE VISTA</h2>
-        <p style="color: #bbb; margin-top: 10px;">¿Autorizar acceso a tu pantalla?</p>
+        <h2 style="margin:0; font-size: 1.3em;">SOLICITUD DE ACCESO</h2>
+        <p style="color: #bbb; margin-top: 10px;">¿Deseas enviar tu señal a vMix?</p>
         <div class="modal-btns">
             <button class="btn-yes" onclick="responderPortero(true)">YES</button>
             <button class="btn-no" onclick="responderPortero(false)">NO</button>
@@ -58,103 +48,50 @@
     <script>
         const videoElem = document.getElementById('mainVideo');
         const shareBtn = document.getElementById('shareBtn');
-        const viewBtn = document.getElementById('viewBtn');
         const modal = document.getElementById('modal-portero');
-        
-        // PeerJS con configuración de servidores robusta
-        const peer = new Peer({
-            config: {'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' }
-            ]}
-        });
-        
+        let peer = new Peer();
         let localStream = null;
-        let currentCall = null;
         let incomingCall = null;
 
-        peer.on('open', (id) => {
-            document.getElementById('id-display').innerText = "TU ID: " + id;
-        });
+        peer.on('open', (id) => { console.log('ID:', id); });
 
-        // --- ACCIÓN COMPARTIR ---
         async function toggleShare() {
             if (!localStream) {
                 try {
                     localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: { cursor: "always", frameRate: 60 }, 
+                        video: { width: 1920, height: 1080, frameRate: 60 }, 
                         audio: true 
                     });
                     videoElem.srcObject = localStream;
                     shareBtn.innerText = "Dejar de compartir";
                     shareBtn.classList.add('btn-stop');
-                    
-                    localStream.getVideoTracks()[0].onended = () => resetShareUI();
-                } catch (err) { console.error(err); }
+                } catch (e) { console.error(e); }
             } else {
-                resetShareUI();
-            }
-        }
-
-        function resetShareUI() {
-            if (localStream) {
                 localStream.getTracks().forEach(t => t.stop());
                 localStream = null;
-            }
-            videoElem.srcObject = null;
-            shareBtn.innerText = "Compartir pantalla";
-            shareBtn.classList.remove('btn-stop');
-        }
-
-        // --- ACCIÓN VER ---
-        function toggleView() {
-            if (!currentCall) {
-                const remoteId = document.getElementById('peer-id-input').value.trim();
-                if (!remoteId) return alert("Pega el ID del invitado.");
-                
-                // Llamamos (Enviamos un stream vacío para negociar)
-                currentCall = peer.call(remoteId, new MediaStream());
-                viewBtn.innerText = "Cerrando...";
-                viewBtn.classList.add('btn-stop');
-                viewBtn.innerText = "Dejar de ver";
-
-                currentCall.on('stream', (remoteStream) => {
-                    videoElem.srcObject = remoteStream;
-                    videoElem.play();
-                });
-
-                currentCall.on('close', () => resetViewUI());
-                currentCall.on('error', () => resetViewUI());
-            } else {
-                resetViewUI();
+                videoElem.srcObject = null;
+                shareBtn.innerText = "Compartir pantalla";
+                shareBtn.classList.remove('btn-stop');
             }
         }
 
-        function resetViewUI() {
-            if (currentCall) currentCall.close();
-            currentCall = null;
-            videoElem.srcObject = null;
-            viewBtn.innerText = "Ver pantalla remota";
-            viewBtn.classList.remove('btn-stop');
+        function copyProductorLink() {
+            if (!peer.id) return alert("Cargando conexión...");
+            // Crea el link automático hacia la página /remoto
+            const link = window.location.href.replace('index.html', '') + "remoto?id=" + peer.id;
+            navigator.clipboard.writeText(link);
+            alert("Link copiado. Pégalo en tu vMix.");
         }
 
-        // --- EL PORTERO ---
         peer.on('call', (call) => {
             incomingCall = call;
             modal.style.display = 'block';
         });
 
-        async function responderPortero(autorizado) {
+        function responderPortero(si) {
             modal.style.display = 'none';
-            if (autorizado) {
-                // Si el invitado NO ha compartido pantalla aún, se la pedimos antes de contestar
-                if (!localStream) {
-                    await toggleShare();
-                }
-                // Ahora sí, contestamos con el video real
-                if (localStream) {
-                    incomingCall.answer(localStream);
-                }
+            if (si && incomingCall) {
+                incomingCall.answer(localStream);
             } else {
                 incomingCall.close();
             }
