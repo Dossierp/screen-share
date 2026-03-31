@@ -2,61 +2,46 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>FEED LIMPIO - DP</title>
+    <title>vMix Feed - DP</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; cursor: pointer; }
+        body { margin: 0; background: #000; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
         video { width: 100vw; height: 100vh; object-fit: contain; }
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(0, 200, 83, 0.5); font-family: sans-serif; font-size: 14px; pointer-events: none; text-transform: uppercase; font-weight: bold; }
+        #info { position: fixed; top: 10px; left: 10px; color: #00c853; font-family: sans-serif; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <div id="status">ESPERANDO SEÑAL...</div>
-    <video id="remoteVideo" autoplay playsinline muted></video>
+    <div id="info">INICIALIZANDO...</div>
+    <video id="v" autoplay playsinline muted></video>
 
     <script>
-        const videoElem = document.getElementById('remoteVideo');
-        const statusElem = document.getElementById('status');
-        
-        const peer = new Peer({
-            config: {'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'stun:stun1.l.google.com:19302' }
-            ]}
-        });
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const guestId = urlParams.get('id');
+        const video = document.getElementById('v');
+        const info = document.getElementById('info');
+        const peer = new Peer({ config: {'iceServers': [{ url: 'stun:stun.l.google.com:19302' }]}});
+        const guestId = new URLSearchParams(window.location.search).get('id');
 
-        function iniciarLlamada() {
-            if (guestId && peer.open) {
-                statusElem.innerText = "SOLICITANDO ACCESO...";
-                const call = peer.call(guestId, new MediaStream());
-                
-                call.on('stream', (stream) => {
-                    statusElem.style.display = 'none';
-                    videoElem.srcObject = stream;
-                    videoElem.play();
-                });
-                
-                // Si en 10 segundos no hay stream, avisar
-                setTimeout(() => {
-                    if (!videoElem.srcObject) statusElem.innerText = "REINTENTANDO... (Haz clic aquí)";
-                }, 10000);
-            }
+        function connect() {
+            if (!guestId || !peer.open) return;
+            info.innerText = "SOLICITANDO PANTALLA...";
+            
+            // Llamamos con un stream de audio vacío para "despertar" la conexión
+            const call = peer.call(guestId, new MediaStream());
+            
+            call.on('stream', s => {
+                info.style.display = 'none';
+                video.srcObject = s;
+                video.play();
+            });
+
+            // Si falla, reintenta en 5 segundos
+            setTimeout(() => {
+                if (!video.srcObject) connect();
+            }, 5000);
         }
 
-        peer.on('open', iniciarLlamada);
-
-        // Si vMix bloquea el autoplay o la señal falla, un clic reintenta todo
-        document.body.onclick = () => {
-            if (!videoElem.srcObject) {
-                iniciarLlamada();
-            } else {
-                videoElem.play();
-                statusElem.style.display = 'none';
-            }
-        };
+        peer.on('open', connect);
+        // Si haces clic en "Interact" en vMix y luego en la pantalla, esto fuerza el play
+        document.body.onclick = () => { video.play(); info.style.display = 'none'; };
     </script>
 </body>
 </html>
