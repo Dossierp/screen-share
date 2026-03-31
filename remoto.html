@@ -1,82 +1,35 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Dossier vMix Receiver</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        /* Diseño ultra limpio para vMix */
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background: black; 
-            overflow: hidden; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            width: 100vw;
-        }
-        video { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain; /* Mantiene la proporción de la laptop */
-        }
-        #info {
-            position: absolute;
-            color: rgba(56, 189, 248, 0.5);
-            font-family: sans-serif;
-            font-size: 10px;
-            bottom: 10px;
-            right: 10px;
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body>
-
-    <video id="remoteVideo" autoplay playsinline></video>
-    <div id="info">DOSSIER RECEIVER SLOT 1</div>
-
-    <script>
-        // Este ID debe coincidir con el que pusimos en index.html
+<script>
         const TARGET_ID = 'DOSSIER-STREAM-SLOT1';
-        const peer = new Peer(); // vMix genera un ID aleatorio cada vez
+        const peer = new Peer(); 
+        let currentCall = null;
 
-        peer.on('open', (id) => {
-            console.log('Conectado al servidor de señalización con ID:', id);
-            connectToPresenter();
+        peer.on('open', () => {
+            console.log('Receptor listo.');
+            tryConnect(); // Intento inicial
         });
 
-        function connectToPresenter() {
-            // Intentamos llamar al presentador (Slot 1)
-            // Enviamos un stream vacío para iniciar el handshake de WebRTC
-            const call = peer.call(TARGET_ID, new MediaStream());
-            
-            call.on('stream', (remoteStream) => {
-                const video = document.getElementById('remoteVideo');
-                video.srcObject = remoteStream;
-                document.getElementById('info').innerText = "CONECTADO - LIVE";
-            });
+        function tryConnect() {
+            // Si ya hay video, no hace nada. Si no, intenta llamar.
+            if (!currentCall || !currentCall.open) {
+                console.log('Intentando conectar con la laptop...');
+                const call = peer.call(TARGET_ID, new MediaStream());
+                
+                call.on('stream', (remoteStream) => {
+                    const video = document.getElementById('remoteVideo');
+                    video.srcObject = remoteStream;
+                    document.getElementById('info').innerText = "RECIBIENDO SEÑAL LIVE";
+                    currentCall = call;
+                });
 
-            call.on('error', (err) => {
-                console.error('Error en la llamada:', err);
-                setTimeout(connectToPresenter, 3000); // Reintento automático en 3s
-            });
-
-            // Si el presentador cierra la pestaña, intentamos reconectar
-            call.on('close', () => {
-                document.getElementById('info').innerText = "ESPERANDO SEÑAL...";
-                setTimeout(connectToPresenter, 3000);
-            });
+                // Si falla o no hay nadie, reintenta en 3 segundos
+                setTimeout(() => {
+                    if (!currentCall) tryConnect();
+                }, 3000);
+            }
         }
 
-        // Manejar errores de Peer
         peer.on('error', (err) => {
-            if(err.type === 'peer-disconnected' || err.type === 'browser-incompatible') {
-                location.reload();
-            }
+            console.log('Buscando señal...');
+            setTimeout(tryConnect, 3000); // Reintento por cualquier error
         });
     </script>
-</body>
-</html>
