@@ -1,188 +1,37 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dossier Connect - Presentador</title>
-    
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-
-    <style>
-        :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --text-color: #f8fafc;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            background: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
-            text-align: center;
-            width: 90%;
-            max-width: 550px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        h2 {
-            margin: 0 0 0.5rem 0;
-            letter-spacing: 3px;
-            color: var(--accent-color);
-            text-transform: uppercase;
-            font-size: 1.4rem;
-        }
-
-        p.subtitle {
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            color: #94a3b8;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        button {
-            background: #000;
-            border: 2px solid var(--accent-color);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        button:hover {
-            background: var(--accent-color);
-            color: #000;
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(56, 189, 248, 0.3);
-        }
-
-        button .icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.8rem;
-        }
-
-        video {
-            width: 100%;
-            border-radius: 10px;
-            background: #000;
-            margin-top: 1rem;
-            border: 2px solid #334155;
-            aspect-ratio: 16 / 9;
-            object-fit: cover;
-        }
-
-        #status {
-            margin-top: 1.5rem;
-            font-size: 0.7rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        .active-glow {
-            color: var(--accent-color) !important;
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
-        }
-    </style>
-</head>
-<body>
-
-    <div class="container">
-        <h2>DOSSIER PRODUCCIONES</h2>
-        <p class="subtitle">SISTEMA DE TRANSMISIÓN WEB-TO-VMIX</p>
-        
-        <div class="grid">
-            <button onclick="startShare('screen')">
-                <span class="icon">🖥️</span>
-                PRESENTACIÓN
-            </button>
-            <button onclick="startShare('camera')">
-                <span class="icon">📷</span>
-                CÁMARA WEB
-            </button>
-        </div>
-
-        <video id="preview" autoplay muted playsinline></video>
-        
-        <div id="status">ESTADO: <span id="peer-id">INICIALIZANDO...</span></div>
-    </div>
-
-    <script>
-        // ID fijo para que el receptor de vMix siempre sepa dónde buscar
+<script>
         const SLOT_ID = 'DOSSIER-STREAM-SLOT1'; 
         const peer = new Peer(SLOT_ID);
         let localStream;
 
-        // Mostrar cuando la conexión Peer está lista
         peer.on('open', id => {
-            document.getElementById('peer-id').innerText = "LISTO (CONECTADO A LAN)";
+            document.getElementById('peer-id').innerText = "LISTO - ESPERANDO A VMIX...";
             document.getElementById('peer-id').classList.add('active-glow');
+        });
+
+        // IMPORTANTE: Ahora escucha llamadas SIEMPRE
+        peer.on('call', call => {
+            if (localStream) {
+                call.answer(localStream);
+                document.getElementById('peer-id').innerText = "CONECTADO CON VMIX";
+            } else {
+                console.log("vMix llamó, pero aún no has elegido pantalla.");
+            }
         });
 
         async function startShare(type) {
             try {
-                // Detener cualquier stream previo
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                }
+                if (localStream) localStream.getTracks().forEach(track => track.stop());
 
-                // Capturar Pantalla o Cámara
                 if (type === 'screen') {
-                    localStream = await navigator.mediaDevices.getDisplayMedia({ 
-                        video: { cursor: "always" }, 
-                        audio: true 
-                    });
+                    localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
                 } else {
-                    localStream = await navigator.mediaDevices.getUserMedia({ 
-                        video: true, 
-                        audio: true 
-                    });
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
                 }
                 
-                // Mostrar vista previa local
                 document.getElementById('preview').srcObject = localStream;
-                document.getElementById('peer-id').innerText = "TRANSMITIENDO EN VIVO";
-                
-                // Responder automáticamente cuando vMix intente llamar
-                peer.on('call', call => {
-                    call.answer(localStream);
-                });
-
+                document.getElementById('peer-id').innerText = "TRANSMITIENDO... DALE RELOAD A VMIX";
             } catch (err) {
-                console.error("Error de captura:", err);
-                alert("No se pudo iniciar la captura. Asegúrate de dar permisos en el navegador.");
+                alert("Error: " + err);
             }
         }
-
-        // Manejar cierre de pestaña
-        window.onbeforeunload = () => {
-            if (localStream) localStream.getTracks().forEach(track => track.stop());
-        };
     </script>
-</body>
-</html>
