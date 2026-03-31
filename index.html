@@ -2,48 +2,75 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screen Share Pro - Dossier Producciones</title>
+    <title>Screen Share PRO - DP - Dossier Producciones</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        body { margin: 0; background-color: #000; color: white; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        video { width: 95vw; height: 80vh; border: 2px solid #333; background: #050505; border-radius: 8px; }
-        .controls { margin-top: 20px; display: flex; gap: 15px; }
-        button { padding: 12px 25px; font-size: 16px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; transition: 0.3s; }
-        .btn-start { background-color: #00c853; color: white; }
-        .btn-stop { background-color: #d50000; color: white; }
-        button:hover { opacity: 0.8; transform: scale(1.05); }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        .branding { text-align: center; margin-bottom: 20px; }
+        .title { font-size: 2em; font-weight: bold; }
+        .subtitle { font-size: 1em; color: #bbb; }
+        video { width: 80vw; max-height: 60vh; background: #050505; border: 2px solid #333; border-radius: 10px; object-fit: contain; }
+        .panel { background: #1a1a1a; padding: 20px; border-radius: 15px; text-align: center; margin-top: 15px; width: 350px; }
+        input { padding: 12px; border-radius: 5px; border: 1px solid #444; margin-bottom: 12px; width: 100%; text-align: center; background: #222; color: #eee; }
+        button { padding: 12px 25px; margin: 5px; border-radius: 5px; border: none; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-share { background: #00c853; color: white; }
+        .btn-view { background: #2979ff; color: white; }
+        #id-display { color: #00e676; font-size: 1.1em; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h2>SCREEN SHARE PRO</h2>
-    <video id="preview" autoplay playsinline></video>
-    <div class="controls">
-        <button class="btn-start" onclick="startCapture()">COMPARTIR PANTALLA</button>
-        <button class="btn-stop" onclick="stopCapture()">DETENER</button>
+    <div class="branding">
+        <div class="title">SCREEN SHARE PRO - DP</div>
+        <div class="subtitle">www.dossierproducciones.com</div>
+    </div>
+    
+    <video id="remoteVideo" autoplay playsinline></video>
+
+    <div class="panel">
+        <div id="id-display">Cargando ID...</div>
+        
+        <button class="btn-share" onclick="startSharing()">COMPARTIR MI PANTALLA</button>
+        
+        <hr style="border: 0.5px solid #333; margin: 20px 0;">
+        
+        <input type="text" id="peer-id-input" placeholder="Pega aquí el ID del invitado">
+        <button class="btn-view" onclick="connectToPeer()">VER PANTALLA REMOTA</button>
     </div>
 
     <script>
-        const videoElem = document.getElementById("preview");
-        let displayStream = null;
+        const peer = new Peer(); // ID automático
+        let localStream;
 
-        async function startCapture() {
-            const displayOptions = {
-                video: { cursor: "always", frameRate: 60 }, // Aprovechamos tus 60fps
-                audio: { echoCancellation: true, noiseSuppression: true }
-            };
+        peer.on('open', (id) => {
+            document.getElementById('id-display').innerText = "TU ID: " + id;
+        });
+
+        async function startSharing() {
             try {
-                displayStream = await navigator.mediaDevices.getDisplayMedia(displayOptions);
-                videoElem.srcObject = displayStream;
-            } catch (err) {
-                console.error("Error: " + err);
-            }
+                localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                document.getElementById('remoteVideo').srcObject = localStream;
+                // El invitado ve su propia captura
+            } catch (err) { console.error(err); }
         }
 
-        function stopCapture() {
-            let tracks = videoElem.srcObject.getTracks();
-            tracks.forEach(track => track.stop());
-            videoElem.srcObject = null;
+        function connectToPeer() {
+            const remoteId = document.getElementById('peer-id-input').value;
+            if (!remoteId) return alert("Pega el ID del invitado.");
+            
+            const call = peer.call(remoteId, localStream || new MediaStream());
+            
+            call.on('stream', (userVideoStream) => {
+                document.getElementById('remoteVideo').srcObject = userVideoStream;
+                // Tú ves la pantalla del invitado
+            });
         }
+
+        peer.on('call', (call) => {
+            call.answer(localStream);
+            call.on('stream', (userVideoStream) => {
+                document.getElementById('remoteVideo').srcObject = userVideoStream;
+            });
+        });
     </script>
 </body>
 </html>
